@@ -8,7 +8,9 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-const inline = html.match(/<script>\n([\s\S]*?)<\/script>/)[1];
+// \r?\n: a Windows checkout ends lines with \r\n. (The first version expected \n only
+// and failed on every Windows runner in CI.)
+const inline = html.match(/<script>\r?\n([\s\S]*?)<\/script>/)[1];
 
 test('the page\'s own script parses', () => {
   // An unescaped quote in a string, say, would leave the page blank.
