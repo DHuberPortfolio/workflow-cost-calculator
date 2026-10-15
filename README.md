@@ -18,9 +18,9 @@ It builds on two of my other tools. [workflow-eval-harness](https://github.com/D
 
 ## Why the prices are a table, not a number in the code
 
-The workflow in the example estimates its own model cost: **$13.82 per 1,000 articles**. The calculator reproduces that estimate to the cent from the run's token counts, 61,626 in and 9,782 out over 24 articles, at **$3 / $15 per million tokens**, the price written into the workflow's code.
+The workflow in the example used to estimate its own model cost at **$13.82 per 1,000 articles**. The calculator reproduces that estimate to the cent from the run's token counts, 61,626 in and 9,782 out over 24 articles, at **$3 / $15 per million tokens**, the price that was written into the workflow's code.
 
-The model it calls, Claude Sonnet 5, costs **$2 / $10** today. A rise to $3 / $15 was announced for September 1, 2026, then cancelled. At today's price the same estimate is **$9.21 per 1,000**. A price written into code goes out of date without anyone noticing. So this calculator keeps every price in one table, with a source and a date. It applies announced changes on the day they take effect, and it says when the table is old.
+The model it calls, Claude Sonnet 5, costs **$2 / $10** today. A rise to $3 / $15 was announced for September 1, 2026, then cancelled. At today's price the same estimate is **$9.21 per 1,000**, and the workflow now uses it. A price written into code goes out of date without anyone noticing. So this calculator keeps every price in one table, with a source and a date. It applies announced changes on the day they take effect, and it says when the table is old.
 
 ## The math
 
