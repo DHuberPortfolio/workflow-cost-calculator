@@ -1,0 +1,24 @@
+# Runs the whole test suite and the mutation audit on every push and pull request,
+# on Linux and Windows, on the oldest supported Node (18) and two current ones.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    name: node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['18', '22', '24']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --test
+      - run: node audit/mutants.js

@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What does your AI workflow really cost? · Workflow cost calculator</title>
+<meta name="description" content="The cost of an AI workflow per 1,000 records: the model, the people who check its work, and the mistakes that get through. Edit every price. Runs in your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230A0E17'/><rect x='18' y='44' width='12' height='12' rx='3' fill='%239061F9'/><rect x='33' y='44' width='49' height='12' rx='3' fill='%230E9F92'/><rect x='18' y='62' width='64' height='6' rx='3' fill='%23243052'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,650;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Colours and fonts match devinhuber.com and the error-rate calculator. */
+  :root {
+    --ground: #0A0E17; --panel: #10172A; --raise: #172039;
+    --line: #243052; --line-soft: #1A2440;
+    --ink: #EEF2FA; --muted: #A3AEC4; --faint: #8490A8;
+    --violet: #A78BFA; --mint: #5EEAD4; --amber: #FBBF5C; --rose: #FB7185; --sky: #7DD3FC;
+    --violet-soft: rgba(167,139,250,.16); --mint-soft: rgba(94,234,212,.14);
+    --amber-soft: rgba(251,191,92,.15); --rose-soft: rgba(251,113,133,.15);
+    --grad: linear-gradient(100deg,#5EEAD4 0%,#7DD3FC 34%,#A78BFA 66%,#FB7185 100%);
+    /* Chart series, checked for colour-blind separation against the panel colour. */
+    --s-model: #9061F9; --s-people: #0E9F92; --s-fixed: #CC8204; --s-mistakes: #E5466E;
+    --display: "Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+    --body: "IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+    --mono: "IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--ground);
+    background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(14,159,146,.13), transparent 70%);
+    color: var(--ink); font: 400 16px/1.6 var(--body); -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--violet); text-underline-offset: 3px; }
+  a:hover { color: var(--ink); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); }
+  .skip { position: absolute; left: -9999px; }
+  .skip:focus { left: 16px; top: 12px; background: var(--panel); padding: 8px 12px; border-radius: 6px; z-index: 10; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+
+  .top { border-bottom: 1px solid var(--line-soft); }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; }
+  .brand { font: 650 17px/1 var(--display); color: var(--ink); text-decoration: none; }
+  .top nav { display: flex; gap: 20px; font-size: 14px; }
+  .top nav a { color: var(--muted); text-decoration: none; }
+  .top nav a:hover { color: var(--ink); }
+
+  .eyebrow { font: 500 12px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--c, var(--violet)); }
+  .hero { padding-block: clamp(40px, 8vw, 80px) clamp(24px, 4vw, 40px); }
+  h1 { font: 800 clamp(36px, 6.2vw, 68px)/1.02 var(--display); letter-spacing: -.025em; margin-top: 18px; max-width: 15ch; }
+  h1 em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { color: var(--muted); font-size: clamp(17px, 2vw, 19px); max-width: 62ch; margin-top: 20px; }
+  .presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 28px; font-size: 14px; color: var(--faint); }
+  .presets button {
+    font: 500 13px/1 var(--mono); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 999px; padding: 9px 14px; cursor: pointer;
+  }
+  .presets button:hover { border-color: var(--violet); }
+  .presets button[aria-pressed="true"] { border-color: var(--mint); background: var(--mint-soft); }
+  .preset-note { font-size: 14px; color: var(--faint); margin-top: 14px; max-width: 78ch; }
+
+  .cards { display: grid; gap: 20px; padding-bottom: 28px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: clamp(20px, 3.5vw, 36px); min-width: 0; }
+  h2 { font: 650 clamp(24px, 3vw, 30px)/1.15 var(--display); letter-spacing: -.01em; margin-top: 10px; }
+  .card-sub { color: var(--muted); margin-top: 6px; max-width: 70ch; }
+  .card-body { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: clamp(20px, 4vw, 44px); margin-top: 26px; align-items: start; }
+  @media (max-width: 760px) { .card-body { grid-template-columns: minmax(0, 1fr); } }
+
+  .inputs { display: grid; gap: 14px; min-width: 0; }
+  .group-label { font: 500 12px/1.2 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); margin-top: 8px; }
+  .group-label:first-child { margin-top: 0; }
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: end; }
+  .field { display: grid; gap: 6px; font-size: 14px; color: var(--muted); min-width: 0; align-content: start; }
+  .field input, .field select {
+    width: 100%; font: 500 18px/1 var(--mono); color: var(--ink); background: var(--ground);
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; min-width: 0;
+  }
+  .field select { font: 500 15px/1.2 var(--body); padding: 11px 10px; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px var(--violet-soft); }
+  .field input[aria-invalid="true"], .field select[aria-invalid="true"] { border-color: var(--rose); }
+  .field input::placeholder { color: var(--faint); opacity: .8; }
+  .unit { position: relative; }
+  .unit input { padding-right: 34px; }
+  .unit.pre input { padding-left: 26px; padding-right: 12px; }
+  .unit::after { content: attr(data-unit); position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font: 500 16px/1 var(--mono); color: var(--faint); pointer-events: none; }
+  .unit.pre::after { right: auto; left: 11px; }
+  .hint { font-size: 13px; color: var(--faint); line-height: 1.5; }
+  .check { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--muted); cursor: pointer; }
+  .check input { margin-top: 4px; accent-color: var(--violet); width: 16px; height: 16px; }
+
+  /* Model steps */
+  .steps { display: grid; gap: 12px; }
+  .step { display: grid; grid-template-columns: minmax(0, 2.3fr) repeat(4, minmax(0, 1fr)) 40px; gap: 10px; align-items: end;
+    padding: 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: rgba(10,14,23,.35); }
+  .step .field input { font-size: 16px; }
+  .step-name { grid-column: 1 / -1; font: 500 12px/1 var(--mono); color: var(--faint); letter-spacing: .05em; text-transform: uppercase; }
+  .icon-btn { width: 40px; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; font: 500 20px/1 var(--body); }
+  .icon-btn:hover { border-color: var(--rose); color: var(--ink); }
+  .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+  @media (max-width: 760px) {
+    .step { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .step .field:first-of-type { grid-column: 1 / -1; }
+    .step .icon-btn { grid-column: 2; justify-self: end; }
+  }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+  .link-btn { background: none; border: 0; color: var(--violet); font: 500 14px/1.4 var(--body); cursor: pointer; padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; }
+  .link-btn:hover { color: var(--ink); }
+  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 640px) { .three { grid-template-columns: minmax(0, 1fr); } }
+  details.more { border-top: 1px solid var(--line-soft); padding-top: 14px; }
+  details.more summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  details.more summary:hover { color: var(--ink); }
+  details.more[open] summary { margin-bottom: 14px; }
+  .bill-inputs { display: grid; gap: 22px; margin-top: 26px; }
+  .bill-result { margin-top: 28px; padding-top: 26px; border-top: 1px solid var(--line-soft); }
+
+  /* Results */
+  .result { min-width: 0; }
+  .big { font: 800 clamp(34px, 5.4vw, 54px)/1.05 var(--display); letter-spacing: -.02em; margin-top: 6px; }
+  .big small { font: 500 .36em/1.3 var(--body); color: var(--muted); letter-spacing: 0; display: inline-block; max-width: 30ch; vertical-align: baseline; }
+  .say { color: var(--muted); margin-top: 14px; max-width: 64ch; }
+  .say strong { color: var(--ink); font-weight: 600; }
+  .note { font-size: 14px; color: var(--faint); margin-top: 12px; max-width: 64ch; border-left: 2px solid var(--line); padding-left: 12px; }
+  .note strong { color: var(--muted); font-weight: 600; }
+  .note.warn { border-left-color: var(--amber); color: var(--muted); }
+  .problems { margin-top: 4px; color: var(--rose); font-size: 15px; }
+  .problems li { margin-left: 18px; margin-top: 4px; }
+  .sub-head { font: 650 17px/1.3 var(--display); margin-top: 26px; }
+
+  /* Stacked bar */
+  .stack { display: flex; gap: 2px; height: 16px; margin-top: 22px; border-radius: 0 4px 4px 0; }
+  .seg { min-width: 0; height: 100%; position: relative; cursor: default; }
+  .seg:last-child { border-radius: 0 4px 4px 0; }
+  .seg.expected { background-image: repeating-linear-gradient(135deg, rgba(10,14,23,.55) 0 3px, transparent 3px 7px); }
+  .seg:hover, .seg:focus-visible { filter: brightness(1.18); }
+  .legend { display: grid; gap: 8px; margin-top: 14px; font-size: 14px; }
+  .legend-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; color: var(--muted); }
+  .legend-row .sw { width: 12px; height: 12px; border-radius: 3px; }
+  .legend-row .sw.expected { background-image: repeating-linear-gradient(135deg, rgba(10,14,23,.6) 0 2px, transparent 2px 4px); }
+  .legend-row .v { font: 500 14px/1.2 var(--mono); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  .legend-row .p { font: 400 13px/1.2 var(--mono); color: var(--faint); text-align: right; min-width: 7ch; font-variant-numeric: tabular-nums; }
+  .legend-row .r { grid-column: 2 / -1; font-size: 13px; color: var(--faint); margin-top: -4px; }
+
+  /* Track (one axis, markers on it) */
+  .track-wrap { margin-top: 24px; }
+  .track-title { font: 500 12px/1.2 var(--mono); color: var(--faint); letter-spacing: .05em; text-transform: uppercase; }
+  .track { position: relative; height: 14px; background: var(--raise); border-radius: 999px; margin-top: 30px; }
+  .zone { position: absolute; top: 0; bottom: 0; }
+  .zone.good { background: rgba(14,159,146,.55); }
+  .zone.bad { background: rgba(229,70,110,.4); }
+  .zone:first-child { border-radius: 999px 0 0 999px; }
+  .zone:last-of-type { border-radius: 0 999px 999px 0; }
+  .mark { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--ink); border: 3px solid var(--panel); }
+  .mark.measured { background: var(--amber); }
+  .tick { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
+  .flag { position: absolute; bottom: calc(100% + 8px); transform: translateX(-50%); font: 500 12px/1.2 var(--mono); color: var(--ink); white-space: nowrap; }
+  .flag.left { transform: translateX(-100%); }
+  .flag.right { transform: none; }
+  .axis { display: flex; justify-content: space-between; font: 400 12px/1 var(--mono); color: var(--faint); margin-top: 10px; }
+  .zone-key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .zone-key span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; background: var(--k); }
+
+  .steps-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
+  .steps-table td { padding: 6px 0; border-top: 1px solid var(--line-soft); color: var(--muted); }
+  .steps-table td:last-child { text-align: right; font-family: var(--mono); color: var(--ink); }
+
+  .tip { position: fixed; z-index: 20; pointer-events: none; background: var(--raise); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--muted); max-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  .tip b { display: block; font: 600 15px/1.3 var(--mono); color: var(--ink); }
+
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 4px 0 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font: 500 14px/1 var(--body); padding: 12px 16px;
+    border-radius: 8px; border: 1px solid var(--line); color: var(--ink); background: transparent; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--violet); }
+  .copied { font-size: 14px; color: var(--mint); }
+
+  /* Price table */
+  .prices summary { cursor: pointer; list-style: none; }
+  .prices summary::-webkit-details-marker { display: none; }
+  .prices summary h2::after { content: " +"; color: var(--faint); font-weight: 500; }
+  .prices[open] summary h2::after { content: " −"; }
+  .table-wrap { overflow-x: auto; margin-top: 20px; }
+  table.price-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px; }
+  .price-table th { text-align: left; font: 500 12px/1.3 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--faint); padding: 8px 8px 10px 0; border-bottom: 1px solid var(--line); }
+  .price-table td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line-soft); vertical-align: top; color: var(--muted); }
+  .price-table td.name { color: var(--ink); min-width: 170px; }
+  .price-table .provider { display: block; font-size: 12px; color: var(--faint); }
+  .price-table input { width: 92px; font: 500 15px/1 var(--mono); color: var(--ink); background: var(--ground); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .price-table input.name-in { width: 170px; font: 500 14px/1 var(--body); }
+  .price-table input:focus { outline: none; border-color: var(--violet); }
+  .price-table input[aria-invalid="true"] { border-color: var(--rose); }
+  .price-table .notes { font-size: 13px; color: var(--faint); max-width: 300px; }
+  .chip { display: inline-block; font: 600 11px/1 var(--mono); letter-spacing: .05em; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; color: var(--amber); background: var(--amber-soft); margin-left: 6px; vertical-align: 2px; }
+
+  .audit, .how { padding-block: clamp(32px, 6vw, 64px); border-top: 1px solid var(--line-soft); margin-top: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-top: 26px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; border-top: 3px solid var(--c); }
+  .stat b { display: block; font: 800 30px/1.1 var(--display); }
+  .stat em { display: block; font-style: normal; color: var(--ink); font-weight: 500; margin-top: 4px; }
+  .stat span { display: block; color: var(--faint); font-size: 14px; margin-top: 8px; }
+  .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px 40px; margin-top: 26px; }
+  .how h3 { font: 650 18px/1.25 var(--display); }
+  .how p { color: var(--muted); margin-top: 8px; font-size: 15px; }
+  code { font: 400 .92em var(--mono); background: var(--raise); padding: 1px 6px; border-radius: 4px; }
+
+  footer { border-top: 1px solid var(--line-soft); padding: 28px 0 40px; font-size: 14px; color: var(--faint); }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  footer a { color: var(--muted); }
+
+  @media (forced-colors: active) { .seg, .zone, .sw { forced-color-adjust: none; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the calculator</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="https://devinhuber.com/">Devin Huber</a>
+    <nav aria-label="Links">
+      <a href="#how">How it works</a>
+      <a href="https://github.com/DHuberPortfolio/workflow-cost-calculator/blob/main/METHOD.md" target="_blank" rel="noopener">Method</a>
+      <a href="https://github.com/DHuberPortfolio/workflow-cost-calculator" target="_blank" rel="noopener">Source</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero wrap">
+    <p class="eyebrow" style="--c: var(--mint)">Free tool · runs in your browser</p>
+    <h1>What does your AI workflow <em>really</em> cost?</h1>
+    <p class="lede">Most AI cost calculators stop at the model's bill. This one adds the people who check the AI's work, and the mistakes that get out unchecked. See the cost per 1,000 records, what a better model would have to save to pay for itself, and when a review is worth it.</p>
+    <div class="presets" role="group" aria-label="Load an example">
+      <span>Try:</span>
+      <button type="button" data-preset="news">News tagging (measured)</button>
+      <button type="button" data-preset="support">Support triage</button>
+      <button type="button" data-preset="agent">Research agent</button>
+    </div>
+    <p class="preset-note" id="preset-note"></p>
+  </section>
+
+  <div class="cards wrap">
+
+    <!-- 01 · The bill -->
+    <section class="card" aria-labelledby="h-bill">
+      <p class="eyebrow" style="--c: var(--violet)">01 · The bill</p>
+      <h2 id="h-bill">What do 1,000 records cost?</h2>
+      <p class="card-sub">A record is one item through the workflow: an article, a ticket, a document. Every share below is of all records that enter, duplicates included.</p>
+
+      <div class="bill-inputs">
+        <div class="inputs">
+          <p class="group-label">The model</p>
+          <div class="steps" id="steps"></div>
+          <div class="row-actions">
+            <button type="button" class="link-btn" id="add-step">+ Add a model step</button>
+            <label class="check"><input type="checkbox" id="batch"> <span>Run as a batch: 50% off, results within hours instead of seconds</span></label>
+          </div>
+          <p class="hint">Tokens per call, counting everything sent (system prompt included) and everything returned, <strong>thinking tokens included</strong>: they are billed as output. Your provider's usage report or the API response's <code>usage</code> field has the real numbers. <em>Calls per record</em> is an average: 0.6 for a step 60% of records reach, 3 for a loop, 0.04 for one call per batch of 24.</p>
+        </div>
+
+        <div class="inputs">
+          <p class="group-label">The people</p>
+          <div class="three">
+            <label class="field"><span>Sent to a person</span>
+              <span class="unit" data-unit="%"><input data-key="toPerson" data-problem="toPerson" type="text" inputmode="decimal" autocomplete="off"></span></label>
+            <label class="field"><span>Minutes per review</span>
+              <input data-key="minutes" data-problem="minutes" type="text" inputmode="decimal" autocomplete="off"></label>
+            <label class="field"><span>Hourly cost of a reviewer</span>
+              <span class="unit pre" data-unit="$"><input data-key="hourly" data-problem="hourly" type="text" inputmode="decimal" autocomplete="off"></span></label>
+          </div>
+          <p class="hint">Use the full cost of an hour, not the wage. In the US, wages are 70% of what employees cost employers (<a href="https://www.bls.gov/news.release/ecec.nr0.htm" target="_blank" rel="noopener">BLS, June 2026</a>), so divide a wage by 0.70. Minutes per review is the whole handling time: open, read, decide, fix, move on.</p>
+        </div>
+
+        <div class="inputs">
+          <p class="group-label">Volume</p>
+          <div class="three">
+            <label class="field"><span>Records per month</span>
+              <input data-key="records" data-problem="records" type="text" inputmode="decimal" autocomplete="off"></label>
+          </div>
+        </div>
+
+        <details class="more" id="more">
+          <summary>More options: blocked records, fixed costs, doing it by hand</summary>
+          <div class="three">
+            <label class="field"><span>Blocked or suppressed as duplicates</span>
+              <span class="unit" data-unit="%"><input data-key="stopped" data-problem="stopped" type="text" inputmode="decimal" autocomplete="off"></span>
+              <span class="hint">Never reaches a person or a customer.</span></label>
+            <label class="field"><span>Fixed costs per month</span>
+              <span class="unit pre" data-unit="$"><input data-key="fixed" data-problem="fixed" type="text" inputmode="decimal" autocomplete="off"></span>
+              <span class="hint">Platform subscription, hosting.</span></label>
+            <label class="field"><span>Minutes to do one by hand</span>
+              <input data-key="manual" data-problem="manualMinutes" type="text" inputmode="decimal" autocomplete="off" placeholder="optional">
+              <span class="hint">With no AI at all, to compare.</span></label>
+          </div>
+        </details>
+      </div>
+
+      <div class="bill-result result" id="out-bill" aria-live="polite"></div>
+    </section>
+
+    <!-- 02 · Model choice -->
+    <section class="card" aria-labelledby="h-switch">
+      <p class="eyebrow" style="--c: var(--mint)">02 · Model choice</p>
+      <h2 id="h-switch">Would a better model pay for itself?</h2>
+      <p class="card-sub">A better model costs more per token, but if it's right more often, fewer records need a person. How many fewer does it take to cover the price? Uses the workflow you entered above.</p>
+      <div class="card-body">
+        <div class="inputs">
+          <label class="field" id="alt-step-field"><span>Change the model in</span>
+            <select data-key="altStep" id="alt-step"></select></label>
+          <label class="field"><span>Switch to</span>
+            <select data-key="altModel" data-problem="altModel" id="alt-model"></select></label>
+          <div class="pair">
+            <label class="field"><span>Its input tokens</span>
+              <input data-key="altInput" data-problem="altInput" type="text" inputmode="decimal" autocomplete="off"></label>
+            <label class="field"><span>Its output tokens</span>
+              <input data-key="altOutput" data-problem="altOutput" type="text" inputmode="decimal" autocomplete="off"></label>
+          </div>
+          <p class="hint">Per call. Blank means the same as now. A model that thinks more writes more output tokens.</p>
+          <label class="field"><span>Its share sent to a person, if measured</span>
+            <span class="unit" data-unit="%"><input data-key="altToPerson" data-problem="altToPerson" type="text" inputmode="decimal" autocomplete="off" placeholder="optional"></span></label>
+        </div>
+        <div class="result" id="out-switch" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- 03 · Review threshold -->
+    <section class="card" aria-labelledby="h-review">
+      <p class="eyebrow" style="--c: var(--rose)">03 · Review threshold</p>
+      <h2 id="h-review">When is a review worth it?</h2>
+      <p class="card-sub">Every review costs money. So does every mistake that gets out unchecked. This finds where the line between them sits, and what your current routing lets through.</p>
+      <div class="card-body">
+        <div class="inputs">
+          <label class="field"><span>Cost of one mistake that reaches a customer</span>
+            <span class="unit pre" data-unit="$"><input data-key="mistakeCost" data-problem="mistakeCost" type="text" inputmode="decimal" autocomplete="off" placeholder="your estimate"></span></label>
+          <p class="hint">A refund, rework, a complaint, a lost client. A rough estimate is fine: the page shows how much rides on it.</p>
+          <label class="field"><span>Reviewers catch, of the mistakes they see</span>
+            <span class="unit" data-unit="%"><input data-key="catchRate" data-problem="catchRate" type="text" inputmode="decimal" autocomplete="off"></span></label>
+          <p class="group-label">From a test against an answer key</p>
+          <div class="pair">
+            <label class="field"><span>Went out without review</span>
+              <input data-key="tested" data-problem="tested" type="text" inputmode="numeric" autocomplete="off" placeholder="records"></label>
+            <label class="field"><span>Of those, wrong</span>
+              <input data-key="wrong" data-problem="wrong" type="text" inputmode="numeric" autocomplete="off" placeholder="records"></label>
+          </div>
+          <label class="field"><span>Review precision</span>
+            <span class="unit" data-unit="%"><input data-key="precision" data-problem="precision" type="text" inputmode="decimal" autocomplete="off" placeholder="optional"></span></label>
+          <p class="hint">Of the records sent to a person, the share that really needed one. <a href="https://github.com/DHuberPortfolio/workflow-eval-harness" target="_blank" rel="noopener">workflow-eval-harness</a> measures all three.</p>
+        </div>
+        <div class="result" id="out-review" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button class="btn" type="button" id="copy">Copy a link to these numbers</button>
+      <span class="copied" id="copied" aria-live="polite"></span>
+    </div>
+
+    <!-- Prices -->
+    <details class="card prices" id="prices">
+      <summary><p class="eyebrow" style="--c: var(--amber)">Prices · editable</p><h2>Model prices</h2></summary>
+      <p class="card-sub" id="prices-sub"></p>
+      <div class="table-wrap">
+        <table class="price-table">
+          <thead><tr><th>Model</th><th>Input</th><th>Cached input</th><th>Output</th><th>Notes</th></tr></thead>
+          <tbody id="price-rows"></tbody>
+        </table>
+      </div>
+      <div class="row-actions" style="margin-top: 16px">
+        <button type="button" class="link-btn" id="add-model">+ Add a model</button>
+        <button type="button" class="link-btn" id="reset-prices">Reset to published prices</button>
+      </div>
+    </details>
+  </div>
+
+  <section class="audit wrap" id="checked" aria-labelledby="h-audit">
+    <p class="eyebrow" style="--c: var(--mint)">Checked, not assumed</p>
+    <h2 id="h-audit">How do you know the numbers are right?</h2>
+    <p class="lede">A cost calculator people make decisions with should prove its arithmetic. This one is checked three ways, and every check is in the repository for anyone to run.</p>
+    <div class="stats">
+      <div class="stat" style="--c: var(--s-model)">
+        <b>25 of 25</b>
+        <em>worked-example figures match</em>
+        <span>Every number in the method's worked example, recomputed with exact decimal arithmetic.</span>
+      </div>
+      <div class="stat" style="--c: var(--s-people)">
+        <b>80,000</b>
+        <em>values match a second implementation</em>
+        <span>5,000 random workflows, built to hit every edge, run through a separate exact version of every formula.</span>
+      </div>
+      <div class="stat" style="--c: var(--s-fixed)">
+        <b>14 of 14</b>
+        <em>deliberate mistakes caught</em>
+        <span>The tests were run against broken copies of the code, such as minutes read as hours, or a price change applied a day early. Every copy failed.</span>
+      </div>
+      <div class="stat" style="--c: var(--s-mistakes)">
+        <b>$13.82</b>
+        <em>reproduced to the cent</em>
+        <span>A real workflow's own cost estimate per 1,000, from its token counts. At today's prices it is $9.21: the workflow's code had an out-of-date price in it.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="how wrap" id="how" aria-labelledby="h-how">
+    <p class="eyebrow" style="--c: var(--amber)">How it works</p>
+    <h2 id="h-how">The math, in plain words</h2>
+    <div class="how-grid">
+      <div>
+        <h3>Model cost</h3>
+        <p>Tokens in and tokens out, each at the model's price per million, for every call a record needs. Cached input is billed at the cache price, batch work at half price, and prompts over a model's long-context threshold at its higher price.</p>
+      </div>
+      <div>
+        <h3>People cost</h3>
+        <p>The share of records sent to a person, times the minutes each review takes, times what an hour of a reviewer's time costs. It is usually most of the bill: a review costs dollars, and a model call costs fractions of a cent.</p>
+      </div>
+      <div>
+        <h3>Would a better model pay?</h3>
+        <p>Every point of records sent to a person has a price. Divide the extra model cost by it, and you get how many points fewer the better model must send to a person to break even. This assumes the new model's mistakes are no more frequent.</p>
+      </div>
+      <div>
+        <h3>When is a review worth it?</h3>
+        <p>A review is worth it when the record's chance of being wrong, times what a mistake costs, is more than the review costs. That gives a threshold: the cost-optimal "reject" rule Chow derived in 1970. It needs a model whose confidence is calibrated.</p>
+      </div>
+      <div>
+        <h3>Mistakes that get through</h3>
+        <p>Your test's count of silent errors is a sample, so the page shows its likely range (95% Wilson interval, the same as the <a href="https://dhuberportfolio.github.io/error-rate-calculator/">error-rate calculator</a>), carried through to mistakes per 1,000 and what they cost.</p>
+      </div>
+      <div>
+        <h3>What it leaves out</h3>
+        <p>Building and maintaining the workflow, reviewer training and idle time, other per-record charges, and taxes. The <a href="https://github.com/DHuberPortfolio/workflow-cost-calculator/blob/main/METHOD.md">method</a> lists every assumption and when it breaks.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Built by <a href="https://devinhuber.com/">Devin Huber</a>. MIT licensed. Nothing you type leaves your browser.</span>
+    <span>Companion tools: <a href="https://dhuberportfolio.github.io/error-rate-calculator/">error-rate calculator</a> · <a href="https://github.com/DHuberPortfolio/workflow-eval-harness">workflow-eval-harness</a></span>
+  </div>
+</footer>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+
+<script src="prices.js"></script>
+<script src="cost.js"></script>
+<script src="state.js"></script>
+<script>
+(function () {
+  'use strict';
+  const C = window.WorkflowCost, S = window.CostState, P = window.ModelPrices;
+  const $ = id => document.getElementById(id);
+  const PUBLISHED_IDS = P.MODELS.map(m => m.id);
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const STALE_DAYS = 90;
+  const SOON_DAYS = 60;
+  const COLORS = { model: 'var(--s-model)', people: 'var(--s-people)', fixed: 'var(--s-fixed)', mistakes: 'var(--s-mistakes)' };
+
+  // Today in the viewer's own time zone, which decides the prices in effect.
+  const now = new Date();
+  const TODAY = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+  let state;
+  let preset = null;
+
+  // ---- building DOM safely: every piece of text goes in as a text node ----
+
+  function h(tag, props, ...kids) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'className') node.className = v;
+      else if (k === 'style') node.style.cssText = v;
+      else if (k === 'dataset') Object.assign(node.dataset, v);
+      else node.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) node.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    return node;
+  }
+  const strong = text => h('strong', null, text);
+  const say = (...parts) => h('p', { className: 'say' }, ...parts);
+  const note = (parts, warn) => h('p', { className: warn ? 'note warn' : 'note' }, ...[].concat(parts));
+  const link = (href, text) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+
+  function fmtDate(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return MONTHS[m - 1] + ' ' + d + ', ' + y;
+  }
+  const tokens = x => C.count(x, 0);
+  const pts = x => C.count(x, Math.abs(x) < 10 ? 2 : 1);
+  // A price per million tokens as published: $4, $0.50, $0.075.
+  const pricePerM = x => '$' + (Number.isInteger(x) ? String(x) : x.toFixed(Math.max(2, (String(x).split('.')[1] || '').length)));
+
+  function models() { return S.effectiveModels(P.MODELS, state.prices); }
+  function modelName(id) { const m = models()[id]; return m ? m.name : id; }
+
+  // ---- inputs: state -> fields ----
+
+  function modelOptions(select, value) {
+    select.replaceChildren();
+    const groups = {};
+    for (const m of Object.values(models())) {
+      const g = m.provider;
+      if (!groups[g]) { groups[g] = h('optgroup', { label: g === 'Added' ? 'Your models' : g }); select.append(groups[g]); }
+      groups[g].append(h('option', { value: m.id }, m.name + (m.edited ? ' (edited)' : '')));
+    }
+    select.value = value;
+  }
+
+  function renderSteps() {
+    const box = $('steps');
+    box.replaceChildren();
+    state.steps.forEach((s, i) => {
+      const field = (key, label, unit, placeholder) => {
+        const input = h('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', value: s[key], placeholder,
+          dataset: { step: i, field: key, problem: 'steps.' + i + '.' + key } });
+        return h('label', { className: 'field' }, h('span', null, label), unit ? h('span', { className: 'unit', dataset: { unit } }, input) : input);
+      };
+      const select = h('select', { dataset: { step: i, field: 'model', problem: 'steps.' + i + '.model' } });
+      modelOptions(select, s.model);
+      box.append(h('div', { className: 'step', role: 'group', 'aria-label': 'Model step ' + (i + 1) },
+        state.steps.length > 1 ? h('p', { className: 'step-name' }, 'Step ' + (i + 1)) : null,
+        h('label', { className: 'field' }, h('span', null, 'Model'), select),
+        field('input', 'Input tokens'),
+        field('output', 'Output tokens'),
+        field('calls', 'Calls per record'),
+        field('cached', 'Cached input', '%', '0'),
+        h('button', { type: 'button', className: 'icon-btn', 'aria-label': 'Remove step ' + (i + 1), title: 'Remove this step',
+          hidden: state.steps.length === 1, dataset: { remove: i } }, '×')));
+    });
+    $('add-step').hidden = state.steps.length >= S.MAX_STEPS;
+    renderAltSteps();
+  }
+
+  function renderAltSteps() {
+    const sel = $('alt-step');
+    sel.replaceChildren(...state.steps.map((s, i) => h('option', { value: String(i) }, 'Step ' + (i + 1) + ': ' + modelName(s.model))));
+    if (!(Number(state.altStep) < state.steps.length)) state.altStep = '0';
+    sel.value = state.altStep;
+    $('alt-step-field').hidden = state.steps.length < 2;
+    modelOptions($('alt-model'), state.altModel);
+    const step = state.steps[Number(state.altStep)];
+    for (const [key, f] of [['altInput', 'input'], ['altOutput', 'output']]) {
+      const x = S.parseNumber(step[f]);
+      document.querySelector('[data-key="' + key + '"]').placeholder = Number.isFinite(x) ? 'same: ' + tokens(x) : 'same as now';
+    }
+  }
+
+  function syncFields() {
+    for (const input of document.querySelectorAll('[data-key]')) {
+      if (input.id === 'alt-step' || input.id === 'alt-model') continue;
+      input.value = state[input.dataset.key] ?? '';
+    }
+    $('batch').checked = !!state.batch;
+    const parts = [S.parseNumber(state.stopped), S.parseNumber(state.fixed), S.parseNumber(state.manual)];
+    if (parts.some(x => x)) $('more').open = true;
+    for (const b of document.querySelectorAll('[data-preset]')) b.setAttribute('aria-pressed', String(b.dataset.preset === preset));
+    $('preset-note').textContent = preset ? S.PRESETS[preset].note : 'Your own numbers.';
+  }
+
+  function renderPrices() {
+    const rows = $('price-rows');
+    rows.replaceChildren();
+    const priceInput = (id, key, value, label) => h('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', value: value ?? '',
+      'aria-label': label, dataset: { priceId: id, priceField: key } });
+    for (const m of P.MODELS) {
+      const e = state.prices.edited[m.id];
+      const v = e || m;
+      const notes = [];
+      if (!e && m.long) notes.push('Prompts over ' + tokens(m.long.above) + ' tokens: ' + [m.long.input, m.long.cached, m.long.output].map(pricePerM).join(' / ') + '.');
+      if (!e) for (const c of m.changes || []) {
+        notes.push((c.from > TODAY ? 'From ' : 'Since ') + fmtDate(c.from) + ': ' + ['input', 'cached', 'output'].map(k => pricePerM(k in c ? c[k] : m[k])).join(' / ') + '.');
+      }
+      if (m.note) notes.push(m.note);
+      if (e) notes.push('Edited. Long-prompt prices and scheduled changes no longer apply.');
+      rows.append(h('tr', null,
+        h('td', { className: 'name' }, m.name, e ? h('span', { className: 'chip' }, 'edited') : null, h('span', { className: 'provider' }, m.provider, ' · ', link(m.source, 'source'))),
+        h('td', null, priceInput(m.id, 'input', String(v.input), m.name + ' input price')),
+        h('td', null, priceInput(m.id, 'cached', String(v.cached), m.name + ' cached input price')),
+        h('td', null, priceInput(m.id, 'output', String(v.output), m.name + ' output price')),
+        h('td', { className: 'notes' }, notes.join(' '))));
+    }
+    for (const a of state.prices.added) {
+      rows.append(h('tr', null,
+        h('td', { className: 'name' }, h('input', { className: 'name-in', type: 'text', value: a.name, maxlength: 60, 'aria-label': 'Model name', dataset: { priceId: a.id, priceField: 'name' } })),
+        h('td', null, priceInput(a.id, 'input', a.input, 'Input price')),
+        h('td', null, priceInput(a.id, 'cached', a.cached, 'Cached input price')),
+        h('td', null, priceInput(a.id, 'output', a.output, 'Output price')),
+        h('td', { className: 'notes' }, h('button', { type: 'button', className: 'link-btn', dataset: { removeModel: a.id } }, 'Remove'))));
+    }
+    $('add-model').hidden = state.prices.added.length >= S.MAX_ADDED;
+    const age = C.daysBetween(P.CHECKED, TODAY);
+    const sub = $('prices-sub');
+    sub.replaceChildren('US dollars per million tokens, standard rates, copied from each provider\'s pricing page on ' + fmtDate(P.CHECKED) + '. Edit any price, or add your own model: edits stay in your browser and travel in the copied link.');
+    if (age > STALE_DAYS) sub.append(' ', strong('These prices are ' + age + ' days old: check them against the providers\' pages.'));
+  }
+
+  function renderAll() {
+    renderSteps();
+    renderPrices();
+    syncFields();
+    update();
+  }
+
+  // ---- results ----
+
+  function stackChart(parts, total) {
+    const bar = h('div', { className: 'stack', role: 'img', 'aria-label': parts.map(p => p.label + ' ' + C.money(p.value)).join(', ') });
+    const shown = parts.filter(p => p.value > 0);
+    for (const p of shown) {
+      bar.append(h('div', { className: 'seg' + (p.expected ? ' expected' : ''), tabindex: 0,
+        style: 'background-color:' + p.color + ';flex:' + p.value / total + ' 1 0;min-width:3px',
+        dataset: { tip: C.money(p.value), tipLabel: p.label + (total > 0 ? ' · ' + C.percent(p.value / total) : '') } }));
+    }
+    const legend = h('div', { className: 'legend' }, parts.filter(p => p.value > 0 || !p.optional).map(p => [
+      h('div', { className: 'legend-row' },
+        h('span', { className: 'sw' + (p.expected ? ' expected' : ''), style: 'background-color:' + p.color }),
+        h('span', null, p.label),
+        h('span', { className: 'v' }, C.money(p.value)),
+        h('span', { className: 'p' }, total > 0 ? C.percent(p.value / total) : '')),
+      p.range ? h('div', { className: 'legend-row' }, h('span', { className: 'r' }, p.range)) : null,
+    ]));
+    return [bar, legend];
+  }
+
+  function problemList(problems) {
+    return [h('p', { className: 'say' }, strong('Fix the highlighted fields to see the result:')),
+      h('ul', { className: 'problems' }, problems.map(p => h('li', null, p.message)))];
+  }
+
+  function renderBill(w, inputs) {
+    const out = [];
+    const t = w.per1000.total;
+    out.push(h('p', { className: 'eyebrow', style: '--c: var(--faint)' }, 'Cost per 1,000 records'));
+    out.push(h('p', { className: 'big' }, C.money(t), ' ', h('small', null, 'per 1,000 records')));
+    out.push(...stackChart([
+      { label: 'Model', value: w.per1000.model, color: COLORS.model },
+      { label: 'People', value: w.per1000.people, color: COLORS.people },
+      { label: 'Fixed costs', value: w.per1000.fixed, color: COLORS.fixed, optional: true },
+    ], t));
+
+    if (w.share) {
+      const m = C.percent(w.share.model), p = C.percent(w.share.people);
+      out.push(w.share.people >= w.share.model
+        ? say('People checking the AI\'s work are ', strong(p), ' of the cost. The model is ', strong(m), '.')
+        : say('The model is ', strong(m), ' of the cost. People checking its work are ', strong(p), '.'));
+    }
+    if (inputs.toPerson > 0) {
+      out.push(say('One review costs ', strong(C.money(w.review)), ': ', C.count(inputs.minutes, 2), ' minutes at ', C.money(inputs.hourly), ' an hour. ',
+        strong(C.percent(inputs.toPerson)), ' of records get one, and ', C.percent(w.routing.out), ' go out without review.'));
+    }
+    out.push(say('At ', tokens(inputs.records), ' records a month: ', strong(C.money(w.perMonth.total)), ' a month, ', strong(C.money(12 * w.perMonth.total)), ' a year.'));
+    if (w.manual && w.manual.saving != null) {
+      const s = w.manual.saving;
+      out.push(say('Doing every record by hand, at ', C.count(inputs.manualMinutes, 2), ' minutes each, would cost ', strong(C.money(w.manual.per1000)), ' per 1,000. ',
+        s >= 0 ? ['The workflow costs ', strong(C.percent(s)), ' less.'] : ['The workflow costs ', strong(C.percent(-s)), ' more.']));
+    }
+    if (w.steps.length > 1) {
+      out.push(h('table', { className: 'steps-table' }, h('tbody', null, w.steps.map((s, i) =>
+        h('tr', null, h('td', null, 'Step ' + (i + 1) + ': ' + modelName(s.model)), h('td', null, C.money(1000 * s.perRecord) + ' per 1,000'))))));
+    }
+    out.push(...priceNotes(w, inputs));
+    return out;
+  }
+
+  function priceNotes(w, inputs) {
+    const notes = [];
+    const ms = models();
+    w.steps.forEach((s, i) => {
+      const m = ms[s.model];
+      const which = w.steps.length > 1 ? 'Step ' + (i + 1) + '\'s' : 'The';
+      if (s.long) notes.push(note([which + ' prompts are over ' + tokens(m.long.above) + ' tokens, so it pays ', m.name, '\'s long-prompt prices.'], true));
+      if (s.price.from) notes.push(note([m.name + ' uses the price that took effect on ' + fmtDate(s.price.from) + '.']));
+    });
+    const seen = new Set();
+    for (const s of w.steps) {
+      const m = ms[s.model];
+      const next = C.nextChange(m, TODAY);
+      if (next && !seen.has(m.id) && C.daysBetween(TODAY, next.from) <= SOON_DAYS) {
+        seen.add(m.id);
+        const p = C.priceOn(m, TODAY);
+        notes.push(note([strong(m.name + '\'s price changes on ' + fmtDate(next.from) + ':'), ' input ' + pricePerM(p.input) + ' → ' + pricePerM(next.input ?? p.input) +
+          ', output ' + pricePerM(p.output) + ' → ' + pricePerM(next.output ?? p.output) + ' per million tokens. The page switches on that date.'], true));
+      }
+    }
+    if (inputs.steps.some(s => s.cached > 0)) notes.push(note('Cached input assumes the cache stays warm between records. A prompt cache lasts minutes, so a few records a day pay to write it each time: use the cache hit rate from your provider\'s usage report.'));
+    const age = C.daysBetween(P.CHECKED, TODAY);
+    if (age > STALE_DAYS) notes.push(note(['The price table was checked ' + age + ' days ago. ', link('#prices', 'Check the prices'), ' before relying on these numbers.'], true));
+    return notes;
+  }
+
+  function track({ lo, hi, zones, marks, ticks, axisLabel, keys }) {
+    const pos = x => ((x - lo) / (hi - lo)) * 100;
+    const clamp = x => Math.max(0, Math.min(100, x));
+    const bar = h('div', { className: 'track', role: 'img', 'aria-label': axisLabel });
+    for (const z of zones) bar.append(h('div', { className: 'zone ' + z.kind, style: 'left:' + clamp(pos(z.from)) + '%;width:' + Math.max(0, clamp(pos(z.to)) - clamp(pos(z.from))) + '%' }));
+    for (const t of ticks || []) {
+      const x = clamp(pos(t.at));
+      bar.append(h('div', { className: 'tick', style: 'left:' + x + '%' }), h('div', { className: 'flag' + (x > 80 ? ' left' : x < 20 ? ' right' : ''), style: 'left:' + x + '%' }, t.label));
+    }
+    for (const m of marks || []) {
+      bar.append(h('div', { className: 'mark' + (m.measured ? ' measured' : ''), style: 'left:' + clamp(pos(m.at)) + '%', tabindex: 0, dataset: { tip: m.tip, tipLabel: m.label } }));
+    }
+    return h('div', { className: 'track-wrap' },
+      h('p', { className: 'track-title' }, axisLabel),
+      bar,
+      h('div', { className: 'axis' }, [lo, hi].map(v => h('span', null, C.percent(v / 100, Number.isInteger(v) ? 0 : 1)))),
+      h('div', { className: 'zone-key' }, keys.map(k => h('span', { style: '--k:' + k.color }, k.label))));
+  }
+
+  function renderSwitch(r, w) {
+    const ms = models();
+    const step = r.inputs.steps[r.change.step];
+    const nowName = ms[step.model].name, nextName = ms[r.change.model].name;
+    if (step.model === r.change.model && r.change.input === step.input && r.change.output === step.output) {
+      return [say('Choose a different model, or different token counts, to compare with ', strong(nowName), '.')];
+    }
+    const b = C.breakEven(r.inputs, ms, TODAY, r.change);
+    const out = [];
+    const h0 = r.inputs.toPerson;
+    const per = b.points ? Math.round(100 / Math.abs(b.points)) : null;
+    switch (b.verdict) {
+      case 'pays-if-fewer':
+        out.push(h('p', { className: 'big' }, pts(b.points), ' ', h('small', null, 'points fewer records sent to a person pays for ' + nextName)));
+        out.push(say(nextName + ' costs ', strong(C.money(b.delta)), ' more per 1,000 records than ' + nowName + ' at these token counts. Every point of records sent to a person costs ',
+          strong(C.money(b.point)), ' per 1,000, so it pays for itself if it sends ', strong(C.percent(b.shareNeeded) + ' or fewer'), ' to a person instead of ', C.percent(h0),
+          per ? ': one review saved in every ' + C.count(per, 0) + ' records.' : '.'));
+        break;
+      case 'cheaper-unless-more':
+        out.push(h('p', { className: 'big' }, pts(-b.points), ' ', h('small', null, 'points more sent to a person, and ' + nextName + ' stops being cheaper')));
+        out.push(say(nextName + ' costs ', strong(C.money(-b.delta)), ' less per 1,000 records than ' + nowName + '. It stays cheaper overall only if it sends ',
+          strong('no more than ' + C.percent(b.shareNeeded)), ' to a person instead of ', C.percent(h0),
+          per ? ': about one extra review in ' + C.count(per, 0) + ' records erases the saving.' : '.'));
+        break;
+      case 'never':
+        out.push(h('p', { className: 'big' }, 'Never ', h('small', null, 'pays for itself here')));
+        out.push(b.point === 0
+          ? say('Reviews cost nothing here, so only the model price counts, and ' + nextName + ' costs ', strong(C.money(b.delta)), ' more per 1,000 records.')
+          : say(nextName + ' costs ', strong(C.money(b.delta)), ' more per 1,000 records: ', strong(pts(b.points) + ' points'), ' of reviews. Only ', C.percent(h0),
+            ' of records go to a person now, so even sending none would not cover it.'));
+        break;
+      case 'always':
+        out.push(h('p', { className: 'big' }, 'Always ', h('small', null, 'cheaper, whatever share it sends to a person')));
+        out.push(b.point === 0
+          ? say('Reviews cost nothing here, so only the model price counts, and ' + nextName + ' costs ', strong(C.money(-b.delta)), ' less per 1,000 records.')
+          : say(nextName + ' costs ', strong(C.money(-b.delta)), ' less per 1,000 records: more than sending every remaining record to a person would add.'));
+        break;
+      default:
+        out.push(h('p', { className: 'big' }, 'Same ', h('small', null, 'model cost as ' + nowName)));
+        out.push(say('At these token counts ' + nextName + ' costs the same as ' + nowName + ': ', strong(C.money(b.modelNow)), ' per 1,000 records. Any change in the share sent to a person is the whole difference.'));
+    }
+
+    if (b.points != null && (b.verdict === 'pays-if-fewer' || b.verdict === 'cheaper-unless-more')) {
+      const be = 100 * b.shareNeeded, cur = 100 * h0;
+      const maxShare = 100 * (1 - r.inputs.stopped);
+      const meas = r.change.toPerson != null ? 100 * r.change.toPerson : null;
+      const spread = Math.abs(cur - be);
+      const pad = Math.max(1, spread * 0.8);
+      const vals = [cur, be].concat(meas != null ? [meas] : []);
+      const lo = Math.max(0, Math.min(...vals) - pad), hi = Math.min(maxShare, Math.max(...vals) + pad);
+      out.push(track({
+        lo, hi, axisLabel: 'Share of records sent to a person',
+        zones: [{ kind: 'good', from: lo, to: be }, { kind: 'bad', from: be, to: hi }],
+        ticks: [{ at: be, label: 'break-even ' + C.percent(b.shareNeeded) }],
+        marks: [{ at: cur, label: 'Now, with ' + nowName, tip: C.percent(h0) }].concat(meas != null ? [{ at: meas, measured: true, label: 'Measured for ' + nextName, tip: C.percent(r.change.toPerson) }] : []),
+        keys: [
+          { color: 'rgba(14,159,146,.8)', label: nextName + ' cheaper overall' },
+          { color: 'rgba(229,70,110,.7)', label: nextName + ' costs more' },
+          { color: 'var(--ink)', label: '● now' },
+        ].concat(meas != null ? [{ color: 'var(--amber)', label: '● measured' }] : []),
+      }));
+    }
+
+    if (b.measured) {
+      const d = b.measured.difference;
+      out.push(say('Measured: sending ', strong(C.percent(r.change.toPerson)), ' to a person, ' + nextName + ' costs ', strong(C.money(b.measured.next)), ' per 1,000 against ',
+        C.money(b.measured.now), ' now: ', strong(C.money(Math.abs(d)) + (d <= 0 ? ' less' : ' more')), '.'));
+    }
+    const warn = [];
+    if (!b.sameTokenizer) {
+      const both = [ms[step.model], ms[r.change.model]].map(m => m.tokenizer);
+      const toNewer = both[1] === 'claude-4.7+';
+      warn.push(both.every(t => t && t.startsWith('claude'))
+        ? note([strong('These two count tokens differently.'), ' Claude 4.7 and later produce about 30% more tokens for the same text than Sonnet 4.6 and earlier (', link('https://platform.claude.com/docs/en/about-claude/pricing', 'Anthropic'), '). For ' + nextName + ', try about ',
+          toNewer ? '30% more tokens (× 1.3)' : '23% fewer tokens (÷ 1.3)', ' in its token counts above.'], true)
+        : note([strong('These models may count the same text as a different number of tokens.'), ' Check ' + nextName + '\'s token counts on a sample before trusting the comparison.'], true));
+    }
+    if (b.long) warn.push(note(nextName + '\'s long-prompt prices apply at ' + tokens(r.change.input) + ' input tokens per call.', true));
+    out.push(...warn);
+    out.push(note(['This compares cost at equal quality. A lower share sent to a person is only worth having if ' + nextName + '\'s mistakes that go out are no more frequent: ',
+      link('https://dhuberportfolio.github.io/error-rate-calculator/', 'check whether a measured change is real'), '.']));
+    return out;
+  }
+
+  function renderReview(r, w) {
+    const out = [];
+    const rv = w.review, E = r.review.mistakeCost, k = r.review.catchRate;
+    if (E == null) {
+      out.push(say('Enter what one mistake that reaches a customer costs to see when a review pays.'));
+    } else {
+      const th = C.reviewThreshold(rv, E, k);
+      if (th.never) {
+        out.push(h('p', { className: 'big' }, 'Never ', h('small', null, 'worth reviewing at these costs')));
+        out.push(say('A review costs ', strong(C.money(rv)), '. Catching a mistake saves at most ', strong(C.money(k * E)),
+          ' (', C.money(E), ' a mistake, of which reviewers catch ', C.percent(k, 0), '), so even a record that is certainly wrong costs less to let through.'));
+      } else {
+        out.push(h('p', { className: 'big' }, C.percent(th.chance), ' ', h('small', null, 'chance of a mistake makes a review worth it')));
+        out.push(say('A review costs ', strong(C.money(rv)), '. A mistake that reaches a customer costs ', strong(C.money(E)), ', and reviewers catch ', C.percent(k, 0),
+          ' of the ones they see. So a review pays whenever a record\'s chance of being wrong is above ', C.money(rv), ' ÷ ', C.money(k * E), ' = ', strong(C.percent(th.chance)), '.'));
+        out.push(track({
+          lo: 0, hi: 100, axisLabel: 'Model confidence (if calibrated)',
+          zones: [{ kind: 'good', from: 0, to: 100 * (1 - th.chance) }, { kind: 'bad', from: 100 * (1 - th.chance), to: 100 }],
+          ticks: [{ at: 100 * (1 - th.chance), label: C.percent(1 - th.chance) }],
+          marks: [],
+          keys: [{ color: 'rgba(14,159,146,.8)', label: 'below: send to a person' }, { color: 'rgba(229,70,110,.7)', label: 'above: let it go out' }],
+        }));
+        out.push(note(['If the model\'s confidence is calibrated, send records below ', strong(C.percent(1 - th.chance)), ' confidence to a person. Calibrated means that of the records it marks 90% sure, 90% are right. Many models aren\'t: ',
+          link('https://github.com/DHuberPortfolio/workflow-eval-harness', 'measure it against an answer key'), ' and set the line on the measured chance.']));
+      }
+    }
+
+    if (r.precision != null) {
+      const caught = r.precision * k;
+      out.push(h('p', { className: 'sub-head' }, 'Is the review queue paying for itself?'));
+      if (caught === 0) {
+        out.push(say('At ', C.percent(r.precision), ' review precision, reviews catch no mistakes, so every review is spent on a record that didn\'t need one.'));
+      } else {
+        const per = rv / caught;
+        out.push(say('Each mistake your reviewers catch costs ', strong(C.money(per)), ' of review time, at ', C.percent(r.precision), ' review precision',
+          E == null ? '.' : per <= E ? [': less than the ', C.money(E), ' a mistake costs, so on average the queue pays for itself.']
+            : [': more than the ', C.money(E), ' a mistake costs, so on average the queue costs more than it saves. It is probably sending too many records that don\'t need a person.']));
+      }
+    }
+
+    if (r.test) {
+      const m = C.mistakes({ out: w.routing.out, toPerson: r.inputs.toPerson, wrong: r.test.wrong, tested: r.test.tested,
+        precision: r.precision ?? 0, catchRate: k, review: rv, mistakeCost: E });
+      out.push(h('p', { className: 'sub-head' }, 'What gets through'));
+      out.push(say(strong(C.count(m.reaching.rate) + ' mistakes per 1,000 records'), ' reach customers (likely ', C.count(m.reaching.low), ' to ', C.count(m.reaching.high), '): ',
+        r.test.wrong + ' wrong in ' + tokens(r.test.tested), ' that went out without review is ', C.percent(m.silent.rate), ' (likely ', C.percent(m.silent.low), ' to ', C.percent(m.silent.high),
+        '), and ', C.percent(w.routing.out), ' of records go out without review.',
+        k < 1 && r.precision != null ? [' That includes ', C.count(1000 * r.inputs.toPerson * r.precision * (1 - k)), ' per 1,000 that reviewers saw and missed.'] : ''));
+      if (k < 1 && r.precision == null) out.push(note('This leaves out mistakes reviewers see and miss: add review precision to count them.'));
+      if (m.cost) {
+        const full = w.per1000.total + m.cost.rate;
+        out.push(h('p', { className: 'sub-head' }, 'The full cost'));
+        out.push(h('p', { className: 'big' }, C.money(full), ' ', h('small', null, 'per 1,000 records, counting the mistakes')));
+        out.push(...stackChart([
+          { label: 'Model', value: w.per1000.model, color: COLORS.model },
+          { label: 'People', value: w.per1000.people, color: COLORS.people },
+          { label: 'Fixed costs', value: w.per1000.fixed, color: COLORS.fixed, optional: true },
+          { label: 'Mistakes that got through (expected)', value: m.cost.rate, color: COLORS.mistakes, expected: true,
+            range: 'likely ' + C.money(m.cost.low) + ' to ' + C.money(m.cost.high) },
+        ], full));
+        out.push(note('The mistakes line is an expected cost, built on your estimate of what one costs. The model and people lines are cash. The range covers the uncertainty in the test count only.'));
+      }
+    }
+    return out;
+  }
+
+  function update() {
+    const ms = models();
+    const r = S.toInputs(state, ms, C.validate);
+    const fields = new Set(r.problems.map(p => p.field));
+    for (const input of document.querySelectorAll('[data-problem]')) input.setAttribute('aria-invalid', String(fields.has(input.dataset.problem)));
+    for (const input of document.querySelectorAll('[data-price-id]')) {
+      const f = input.dataset.priceField;
+      if (f === 'name') continue;
+      const x = S.parseNumber(input.value);
+      input.setAttribute('aria-invalid', String(!(typeof x === 'number' && Number.isFinite(x) && x >= 0)));
+    }
+
+    const card1 = r.problems.filter(p => !/^(alt|mistakeCost|catchRate|tested|wrong|precision)/.test(p.field));
+    const card2 = r.problems.filter(p => /^alt/.test(p.field));
+    const card3 = r.problems.filter(p => /^(mistakeCost|catchRate|tested|wrong|precision)/.test(p.field));
+    const blocked = h('p', { className: 'say' }, 'Fix the inputs in 01 above first.');
+
+    if (card1.length) {
+      $('out-bill').replaceChildren(...problemList(card1));
+      $('out-switch').replaceChildren(blocked.cloneNode(true));
+      $('out-review').replaceChildren(blocked);
+    } else {
+      const w = C.workflow(r.inputs, ms, TODAY);
+      $('out-bill').replaceChildren(...renderBill(w, r.inputs));
+      $('out-switch').replaceChildren(...(card2.length ? problemList(card2) : renderSwitch(r, w)));
+      $('out-review').replaceChildren(...(card3.length ? problemList(card3) : renderReview(r, w)));
+    }
+    history.replaceState(null, '', S.encode(state));
+  }
+
+  // ---- events ----
+
+  function changed() { preset = null; syncPresetButtons(); }
+  function syncPresetButtons() {
+    for (const b of document.querySelectorAll('[data-preset]')) b.setAttribute('aria-pressed', String(b.dataset.preset === preset));
+    $('preset-note').textContent = preset ? S.PRESETS[preset].note : 'Your own numbers.';
+  }
+
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.dataset.key && t.tagName === 'INPUT') { state[t.dataset.key] = t.value; changed(); update(); }
+    else if (t.dataset.step != null && t.dataset.field && t.tagName === 'INPUT') { state.steps[Number(t.dataset.step)][t.dataset.field] = t.value; changed(); renderAltSteps(); update(); }
+    else if (t.dataset.priceId) {
+      const id = t.dataset.priceId, f = t.dataset.priceField;
+      const added = state.prices.added.find(a => a.id === id);
+      let firstEdit = false;
+      if (added) added[f] = f === 'name' ? t.value.slice(0, 60) : t.value;
+      else {
+        const m = P.MODELS.find(x => x.id === id);
+        firstEdit = !state.prices.edited[id];
+        state.prices.edited[id] = state.prices.edited[id] || { input: String(m.input), cached: String(m.cached), output: String(m.output) };
+        state.prices.edited[id][f] = t.value;
+      }
+      changed();
+      if (firstEdit) {
+        // Redraw the table so the row shows it's edited, then put the cursor back.
+        const at = t.selectionStart;
+        renderPrices();
+        const again = document.querySelector('[data-price-id="' + id + '"][data-price-field="' + f + '"]');
+        again.focus();
+        again.setSelectionRange(at, at);
+      }
+      if (f === 'name' || !added) renderModelSelects();
+      update();
+    }
+  });
+
+  // Price edits change model names in the menus ("(edited)", a renamed model).
+  function renderModelSelects() {
+    for (const sel of document.querySelectorAll('select[data-field="model"]')) modelOptions(sel, state.steps[Number(sel.dataset.step)].model);
+    renderAltSteps();
+  }
+
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.id === 'batch') { state.batch = t.checked; changed(); update(); }
+    else if (t.tagName === 'SELECT' && t.dataset.field === 'model') { state.steps[Number(t.dataset.step)].model = t.value; changed(); renderAltSteps(); update(); }
+    else if (t.id === 'alt-step') { state.altStep = t.value; state.altInput = ''; state.altOutput = ''; changed(); syncFields(); renderAltSteps(); update(); }
+    else if (t.id === 'alt-model') { state.altModel = t.value; changed(); update(); }
+  });
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.preset) {
+      preset = t.dataset.preset;
+      state = S.fromPreset(preset);
+      renderAll();
+    } else if (t.dataset.remove != null) {
+      state.steps.splice(Number(t.dataset.remove), 1);
+      if (Number(state.altStep) >= state.steps.length) state.altStep = '0';
+      changed(); renderSteps(); update();
+    } else if (t.id === 'add-step') {
+      const last = state.steps[state.steps.length - 1];
+      state.steps.push({ model: last.model, input: last.input, output: last.output, calls: '1', cached: '0' });
+      changed(); renderSteps(); update();
+      const inputs = document.querySelectorAll('#steps select');
+      inputs[inputs.length - 1].focus();
+    } else if (t.id === 'add-model') {
+      let n = 1;
+      while (state.prices.added.some(a => a.id === 'added-' + n) || PUBLISHED_IDS.includes('added-' + n)) n++;
+      state.prices.added.push({ id: 'added-' + n, name: 'My model ' + n, input: '1', cached: '0.1', output: '5' });
+      changed(); renderPrices(); renderModelSelects(); update();
+    } else if (t.dataset.removeModel) {
+      const id = t.dataset.removeModel;
+      state.prices.added = state.prices.added.filter(a => a.id !== id);
+      for (const s of state.steps) if (s.model === id) s.model = S.PRESETS[S.DEFAULT_PRESET].state.steps[0].model;
+      if (state.altModel === id) state.altModel = S.PRESETS[S.DEFAULT_PRESET].state.altModel;
+      changed(); renderAll();
+    } else if (t.id === 'reset-prices') {
+      const ids = new Set(state.prices.added.map(a => a.id));
+      state.prices = { edited: {}, added: [] };
+      for (const s of state.steps) if (ids.has(s.model)) s.model = S.PRESETS[S.DEFAULT_PRESET].state.steps[0].model;
+      if (ids.has(state.altModel)) state.altModel = S.PRESETS[S.DEFAULT_PRESET].state.altModel;
+      changed(); renderAll();
+    } else if (t.id === 'copy') {
+      copyLink();
+    }
+  });
+
+  function copyLink() {
+    const url = location.href;
+    const done = ok => { $('copied').textContent = ok ? 'Link copied.' : 'Copy this link: ' + url; setTimeout(() => { $('copied').textContent = ''; }, 4000); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(url).then(() => done(true), () => done(false));
+    else done(false);
+  }
+
+  // Tooltips: hover or keyboard focus on a chart mark. They add to the legend and
+  // the sentences, which already say every value, so nothing depends on them.
+  const tip = $('tip');
+  function showTip(target, x, y) {
+    tip.replaceChildren(h('b', null, target.dataset.tip), target.dataset.tipLabel || '');
+    tip.hidden = false;
+    const r = tip.getBoundingClientRect();
+    tip.style.left = Math.max(8, Math.min(window.innerWidth - r.width - 8, x - r.width / 2)) + 'px';
+    tip.style.top = Math.max(8, y - r.height - 12) + 'px';
+  }
+  document.addEventListener('pointermove', e => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if (t) showTip(t, e.clientX, e.clientY); else tip.hidden = true;
+  });
+  document.addEventListener('focusin', e => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if (t) { const r = t.getBoundingClientRect(); showTip(t, r.left + r.width / 2, r.top); } else tip.hidden = true;
+  });
+  document.addEventListener('focusout', () => { tip.hidden = true; });
+
+  // ---- start ----
+  const hasLink = location.hash.length > 1;
+  state = hasLink ? S.decode(location.hash, S.PRESETS[S.DEFAULT_PRESET].state, PUBLISHED_IDS) : S.fromPreset(S.DEFAULT_PRESET);
+  // A link to an unchanged example still says which example it is.
+  const encoded = S.encode(state);
+  preset = Object.keys(S.PRESETS).find(name => S.encode(S.fromPreset(name)) === encoded) || null;
+  renderAll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "workflow-cost-calculator",
+  "version": "0.1.0",
+  "description": "What does your AI workflow really cost? The model, the people who check its work, and the mistakes that get through, per 1,000 records.",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "mutants": "node audit/mutants.js"
+  },
+  "engines": {
+    "node": ">=18.3"
+  },
+  "license": "MIT"
+}
