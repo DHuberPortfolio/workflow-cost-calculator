@@ -129,6 +129,7 @@
   .problems { margin-top: 4px; color: var(--rose); font-size: 15px; }
   .problems li { margin-left: 18px; margin-top: 4px; }
   .sub-head { font: 650 17px/1.3 var(--display); margin-top: 26px; }
+  .result > .sub-head:first-child { margin-top: 0; }
 
   /* Stacked bar */
   .stack { display: flex; gap: 2px; height: 16px; margin-top: 22px; border-radius: 0 4px 4px 0; }
@@ -330,24 +331,24 @@
     <section class="card" aria-labelledby="h-review">
       <p class="eyebrow" style="--c: var(--rose)">03 · Review threshold</p>
       <h2 id="h-review">When is a review worth it?</h2>
-      <p class="card-sub">Every review costs money. So does every mistake that gets out unchecked. This finds where the line between them sits, and what your current routing lets through.</p>
+      <p class="card-sub">Reviews cost money, and so do mistakes that slip out to customers. This answers three questions: when one review is worth it, whether your review queue pays for itself, and what the mistakes that still get out cost you.</p>
       <div class="card-body">
         <div class="inputs">
-          <label class="field"><span>Cost of one mistake that reaches a customer</span>
+          <label class="field"><span>What does one mistake cost you?</span>
             <span class="unit pre" data-unit="$"><input data-key="mistakeCost" data-problem="mistakeCost" type="text" inputmode="decimal" autocomplete="off" placeholder="your estimate"></span></label>
-          <p class="hint">A refund, rework, a complaint, a lost client. A rough estimate is fine: the page shows how much rides on it.</p>
-          <label class="field"><span>Reviewers catch, of the mistakes they see</span>
+          <p class="hint">When a wrong result reaches a customer: a refund, rework, a complaint, a lost client. A rough guess is fine; the results show how much rides on it.</p>
+          <label class="field"><span>Of the mistakes reviewers see, how many do they catch?</span>
             <span class="unit" data-unit="%"><input data-key="catchRate" data-problem="catchRate" type="text" inputmode="decimal" autocomplete="off"></span></label>
-          <p class="group-label">From a test against an answer key</p>
+          <p class="group-label">Your test results, checked against an answer key</p>
           <div class="pair">
-            <label class="field"><span>Went out without review</span>
+            <label class="field"><span>Records that went out without review</span>
               <input data-key="tested" data-problem="tested" type="text" inputmode="numeric" autocomplete="off" placeholder="records"></label>
-            <label class="field"><span>Of those, wrong</span>
+            <label class="field"><span>How many of those were wrong</span>
               <input data-key="wrong" data-problem="wrong" type="text" inputmode="numeric" autocomplete="off" placeholder="records"></label>
           </div>
-          <label class="field"><span>Review precision</span>
+          <label class="field"><span>Of the records sent to a person, how many really needed one?</span>
             <span class="unit" data-unit="%"><input data-key="precision" data-problem="precision" type="text" inputmode="decimal" autocomplete="off" placeholder="optional"></span></label>
-          <p class="hint">Of the records sent to a person, the share that really needed one. <a href="https://github.com/DHuberPortfolio/workflow-eval-harness" target="_blank" rel="noopener">workflow-eval-harness</a> measures all three.</p>
+          <p class="hint">This one is called review precision. <a href="https://github.com/DHuberPortfolio/workflow-eval-harness" target="_blank" rel="noopener">workflow-eval-harness</a> measures all three test numbers.</p>
         </div>
         <div class="result" id="out-review" aria-live="polite"></div>
       </div>
@@ -421,11 +422,11 @@
       </div>
       <div>
         <h3>When is a review worth it?</h3>
-        <p>A review is worth it when the record's chance of being wrong, times what a mistake costs, is more than the review costs. That gives a threshold: the cost-optimal "reject" rule Chow derived in 1970. It needs a model whose confidence is calibrated.</p>
+        <p>A review is worth it when a record's chance of being wrong, times what a mistake costs, is more than the review costs. A $2.68 review and a $50 mistake break even at a 5.4% chance. That is the cost-saving rule Chow worked out in 1970. Using it on your AI's confidence scores only works if those scores are honest (calibrated).</p>
       </div>
       <div>
-        <h3>Mistakes that get through</h3>
-        <p>Your test's count of silent errors is a sample, so the page shows its likely range (95% Wilson interval, the same as the <a href="https://dhuberportfolio.github.io/error-rate-calculator/">error-rate calculator</a>), carried through to mistakes per 1,000 and what they cost.</p>
+        <h3>Mistakes that slip out</h3>
+        <p>Your test's count of mistakes is a sample, so the page shows its likely range (the same 95% range as the <a href="https://dhuberportfolio.github.io/error-rate-calculator/">error-rate calculator</a>), carried through to mistakes per 1,000 records and what they cost. The cost depends on three things: how often unreviewed records are wrong, how many go out unreviewed, and what one mistake costs.</p>
       </div>
       <div>
         <h3>What it leaves out</h3>
@@ -794,67 +795,84 @@
     return out;
   }
 
+  // Three separate answers, each saying which inputs drive it, so a reader can see
+  // why changing one number moves one answer and not another.
   function renderReview(r, w) {
     const out = [];
     const rv = w.review, E = r.review.mistakeCost, k = r.review.catchRate;
+    let part = 0;
+    const head = text => h('p', { className: 'sub-head' }, ++part + '. ' + text);
+
+    // 1. One record: is it worth a review?
+    out.push(head('When is one review worth it?'));
     if (E == null) {
-      out.push(say('Enter what one mistake that reaches a customer costs to see when a review pays.'));
+      out.push(say('Enter what one mistake costs you to see when a review pays for itself.'));
     } else {
       const th = C.reviewThreshold(rv, E, k);
       if (th.never) {
-        out.push(h('p', { className: 'big' }, 'Never ', h('small', null, 'worth reviewing at these costs')));
-        out.push(say('A review costs ', strong(C.money(rv)), '. Catching a mistake saves at most ', strong(C.money(k * E)),
-          ' (', C.money(E), ' a mistake, of which reviewers catch ', C.percent(k, 0), '), so even a record that is certainly wrong costs less to let through.'));
+        out.push(h('p', { className: 'big' }, 'Never ', h('small', null, 'at these costs')));
+        out.push(say('A review costs ', strong(C.money(rv)), ', but catching a mistake saves at most ', strong(C.money(k * E)),
+          ' (a ', C.money(E), ' mistake, and reviewers catch ', C.percent(k, 0), ' of them). Even a record that is surely wrong costs less to let out than to review.'));
       } else {
-        out.push(h('p', { className: 'big' }, C.percent(th.chance), ' ', h('small', null, 'chance of a mistake makes a review worth it')));
-        out.push(say('A review costs ', strong(C.money(rv)), '. A mistake that reaches a customer costs ', strong(C.money(E)), ', and reviewers catch ', C.percent(k, 0),
-          ' of the ones they see. So a review pays whenever a record\'s chance of being wrong is above ', C.money(rv), ' ÷ ', C.money(k * E), ' = ', strong(C.percent(th.chance)), '.'));
+        out.push(h('p', { className: 'big' }, 'Above ', C.percent(th.chance), ' ', h('small', null, 'chance a record is wrong')));
+        out.push(say('A review costs ', strong(C.money(rv)), ' (from 01). Letting a mistake out costs ', strong(C.money(E)),
+          k < 1 ? [', and reviewers catch ', C.percent(k, 0), ' of mistakes, so a review can save up to ', C.money(k * E)] : '',
+          '. So a review pays for itself when a record has more than a ', strong(C.percent(th.chance)), ' chance of being wrong (',
+          C.money(rv), ' ÷ ', C.money(k * E), ').'));
         out.push(track({
-          lo: 0, hi: 100, axisLabel: 'Model confidence (if calibrated)',
+          lo: 0, hi: 100, axisLabel: 'How sure the AI says it is (if its confidence is honest)',
           zones: [{ kind: 'good', from: 0, to: 100 * (1 - th.chance) }, { kind: 'bad', from: 100 * (1 - th.chance), to: 100 }],
           ticks: [{ at: 100 * (1 - th.chance), label: C.percent(1 - th.chance) }],
           marks: [],
           keys: [{ color: 'rgba(14,159,146,.8)', label: 'below: send to a person' }, { color: 'rgba(229,70,110,.7)', label: 'above: let it go out' }],
         }));
-        out.push(note(['If the model\'s confidence is calibrated, send records below ', strong(C.percent(1 - th.chance)), ' confidence to a person. Calibrated means that of the records it marks 90% sure, 90% are right. Many models aren\'t: ',
-          link('https://github.com/DHuberPortfolio/workflow-eval-harness', 'measure it against an answer key'), ' and set the line on the measured chance.']));
+        out.push(note(['In practice: if your AI reports how sure it is, send anything under ', strong(C.percent(1 - th.chance)), ' sure to a person and let the rest go out. ',
+          'That only works if its confidence is honest: of the records it calls 90% sure, about 90% should be right. Many models are overconfident, so ',
+          link('https://github.com/DHuberPortfolio/workflow-eval-harness', 'check it against an answer key'), ' first.']));
       }
     }
 
+    // 2. The queue as a whole: is it worth what it costs?
     if (r.precision != null) {
       const caught = r.precision * k;
-      out.push(h('p', { className: 'sub-head' }, 'Is the review queue paying for itself?'));
+      out.push(head('Does your review queue pay for itself?'));
       if (caught === 0) {
-        out.push(say('At ', C.percent(r.precision), ' review precision, reviews catch no mistakes, so every review is spent on a record that didn\'t need one.'));
+        out.push(say('At ', C.percent(r.precision), ' review precision, reviewers never find a mistake, so every review is spent on a record that didn\'t need one.'));
       } else {
         const per = rv / caught;
-        out.push(say('Each mistake your reviewers catch costs ', strong(C.money(per)), ' of review time, at ', C.percent(r.precision), ' review precision',
-          E == null ? '.' : per <= E ? [': less than the ', C.money(E), ' a mistake costs, so on average the queue pays for itself.']
-            : [': more than the ', C.money(E), ' a mistake costs, so on average the queue costs more than it saves. It is probably sending too many records that don\'t need a person.']));
+        out.push(say('Of the records sent to a person, ', C.percent(r.precision), ' really needed one. So each mistake your reviewers catch costs ', strong(C.money(per)), ' of review time',
+          E == null ? '.' : per <= E ? [', less than the ', C.money(E), ' it would cost to let it out. On average, the queue pays for itself.']
+            : [', more than the ', C.money(E), ' it would cost to let it out. On average, the queue costs more than it saves: it is probably sending too many records that don\'t need a person.']));
       }
     }
 
+    // 3. What still gets out, and what it costs.
     if (r.test) {
       const m = C.mistakes({ out: w.routing.out, toPerson: r.inputs.toPerson, wrong: r.test.wrong, tested: r.test.tested,
         precision: r.precision ?? 0, catchRate: k, review: rv, mistakeCost: E });
-      out.push(h('p', { className: 'sub-head' }, 'What gets through'));
-      out.push(say(strong(C.count(m.reaching.rate) + ' mistakes per 1,000 records'), ' reach customers (likely ', C.count(m.reaching.low), ' to ', C.count(m.reaching.high), '): ',
-        r.test.wrong + ' wrong in ' + tokens(r.test.tested), ' that went out without review is ', C.percent(m.silent.rate), ' (likely ', C.percent(m.silent.low), ' to ', C.percent(m.silent.high),
-        '), and ', C.percent(w.routing.out), ' of records go out without review.',
-        k < 1 && r.precision != null ? [' That includes ', C.count(1000 * r.inputs.toPerson * r.precision * (1 - k)), ' per 1,000 that reviewers saw and missed.'] : ''));
+      out.push(head('What do the mistakes that slip out cost?'));
+      out.push(say('Your test found ', strong(r.test.wrong + ' wrong in ' + tokens(r.test.tested)), ' records that went out without review (', C.percent(m.silent.rate),
+        ', likely ', C.percent(m.silent.low), ' to ', C.percent(m.silent.high), '). ', C.percent(w.routing.out), ' of all records go out without review, so about ',
+        strong(C.count(m.reaching.rate) + ' mistakes per 1,000 records'), ' reach customers (likely ', C.count(m.reaching.low), ' to ', C.count(m.reaching.high), ')',
+        k < 1 && r.precision != null ? [', including ', C.count(1000 * r.inputs.toPerson * r.precision * (1 - k)), ' that reviewers saw and missed'] : '', '.'));
       if (k < 1 && r.precision == null) out.push(note('This leaves out mistakes reviewers see and miss: add review precision to count them.'));
       if (m.cost) {
         const full = w.per1000.total + m.cost.rate;
-        out.push(h('p', { className: 'sub-head' }, 'The full cost'));
+        out.push(say('At ', C.money(E), ' each, that is ', strong(C.money(m.cost.rate) + ' per 1,000 records'), ' (likely ', C.money(m.cost.low), ' to ', C.money(m.cost.high), ')',
+          m.cost.rate >= w.per1000.total
+            ? [', more than the ', C.money(w.per1000.total), ' the workflow itself costs. Here the mistakes, not the AI bill, are the cost to manage.']
+            : [', on top of the ', C.money(w.per1000.total), ' the workflow itself costs.']));
         out.push(h('p', { className: 'big' }, C.money(full), ' ', h('small', null, 'per 1,000 records, counting the mistakes')));
         out.push(...stackChart([
           { label: 'Model', value: w.per1000.model, color: COLORS.model },
           { label: 'People', value: w.per1000.people, color: COLORS.people },
           { label: 'Fixed costs', value: w.per1000.fixed, color: COLORS.fixed, optional: true },
-          { label: 'Mistakes that got through (expected)', value: m.cost.rate, color: COLORS.mistakes, expected: true,
+          { label: 'Mistakes that slip out (estimated)', value: m.cost.rate, color: COLORS.mistakes, expected: true,
             range: 'likely ' + C.money(m.cost.low) + ' to ' + C.money(m.cost.high) },
         ], full));
-        out.push(note('The mistakes line is an expected cost, built on your estimate of what one costs. The model and people lines are cash. The range covers the uncertainty in the test count only.'));
+        out.push(note([strong('What moves this number:'), ' how often the records that go out unreviewed are wrong (your test), how many go out unreviewed (',
+          C.percent(w.routing.out), ', from 01), and what one mistake costs. The line in part 1 doesn\'t change it: that is advice for setting up your routing. ',
+          'The mistakes line is an estimate built on your cost per mistake; the model and people lines are real spending.']));
       }
     }
     return out;
