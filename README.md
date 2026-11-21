@@ -50,7 +50,7 @@ Two more checks are in [`audit/`](audit):
   ```bash
   py -3.11 -I audit/reference_check.py
   ```
-- **[`mutants.js`](audit/mutants.js)** shows the tests catch real mistakes. It runs them against 14 broken copies of `cost.js`, each with one plausible bug, and every copy fails:
+- **[`mutants.js`](audit/mutants.js)** shows the tests catch real mistakes. It runs them against 14 broken copies of `cost.js`, each with one plausible bug, and every copy fails. It counts nothing unless no test fails on the unchanged `cost.js` first, loaded the same way, so a test failing for another reason cannot make every copy look caught:
 
   | Deliberate mistake | Tests failed |
   |---|---|
